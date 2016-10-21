@@ -1,0 +1,6 @@
+*.o
+*.out
+
+
+.DS_store
+.Trashes
