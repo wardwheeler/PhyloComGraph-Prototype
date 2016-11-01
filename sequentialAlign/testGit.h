@@ -1,3 +1,6 @@
+int a =1;
+////
+
 /**
  *  Contains various helper fns for using bit arrays to implement packed dynamic characters.
  *  Individualt dynamic character elements are represented using bit arrays, where each bit marks whether
