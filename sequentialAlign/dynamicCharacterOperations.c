@@ -28,6 +28,10 @@ size_t dcElemSize(size_t alphLen) {
     return (alphLen / WORD_WIDTH) + ((alphLen % WORD_WIDTH) ? 1 : 0);
 }
 
+uint64_t getGap(const dynChar_t* const character) {
+    return 1 << (character.alphSize - 1);
+}
+
 int setDCElement( const size_t whichIdx, const dcElement_t* const changeToThis, dynChar_t* const charToBeAltered ) {
     if ( whichIdx >= charToBeAltered -> numElems ) {
         return 1;

@@ -16,6 +16,9 @@
  *    position in the array.
  *  • A dynamic character is a packed series of elements. (This isn't the _actual_ definition
  *    of a dynamic character, but will do for our purposes.)
+ *
+ *  TODO: for this to be useable on |alphabet including gap| > 66, various uint46_t types below will have to be 
+ *        exchanged out for uint64_t* (i.e. arrays of 64-bit ints).
  */
 
 #ifndef DYNAMIC_CHARACTER_OPERATIONS
@@ -84,6 +87,10 @@ void freeDynChar(dynChar_t* p);
 
 void freeDCElem( dcElement_t* p );
 
+/** functions to interact directly with DCElements */
+
+/** returns the correct gap value for this character */
+uint64_t getGap(const dynChar_t* const character);
 
 /**
  *  Takes in a dynamic character to be altered, as well as the index of the element that will
