@@ -26,15 +26,18 @@ struct align {
 
 struct retType {
     int weight;
-    char* seq1;
-    char* seq2;
+  //  char* seq1;
+    int* seq1;
+  //  char* seq2;
+    int* seq2;
     long int alignmentLength;
 };
 
 int trueWt(struct align*, int, int, int);
 
 // EDIT: rectified with .c file.
-int aligner(char*, char*, int, int, struct retType*);
+//int aligner(char*, char*, int, int, struct retType*);
+int aligner(int*, int*, int, int, struct retType*);
 
 
 #endif /* Header_h */
