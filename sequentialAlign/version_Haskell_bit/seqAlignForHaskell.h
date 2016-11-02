@@ -12,7 +12,8 @@
 struct align {
     int partialWt;
     int partialTrueWt;
-    char* partialAlign; // EDIT: made it dynamically allocable.
+ //   char* partialAlign; // EDIT: made it dynamically allocable.
+    int* partialAlign; // EDIT: made it dynamically allocable.
     // char partialAlign[20];
     int posStringA;   // position at stringA
     int posStringB;   // position at stringB
