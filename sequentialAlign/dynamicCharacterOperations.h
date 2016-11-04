@@ -46,7 +46,7 @@ typedef struct alignResult_t {
 
 /**
  *  This holds the array of _possibly ambiguous_ static chars (i.e. a single dynamic character),
- *  along with it's alphabet size and the number of "characters" in the dynChar.
+ *  along with its alphabet size and the number of "characters" (dcElements) in the dynChar.
  *  See note in .c file for how this is used.
  */
 typedef struct dynChar_t {
@@ -83,7 +83,7 @@ size_t dynCharSize(const dynChar_t* const character);
 size_t dcElemSize(size_t alphLen);
 
 /** functions to free memory **/
-void freeDynChar(dynChar_t* p);
+void freeDynChar( dynChar_t* p );
 
 void freeDCElem( dcElement_t* p );
 
@@ -123,8 +123,11 @@ dcElement_t* getDCElement( const size_t whichChar, const dynChar_t* const indynC
 dcElement_t* makeDCElement( const size_t alphLen, const uint64_t value );
 
 /**
- *  Send in two elements. If there's an overlap, put that overlap into each return dyn char, return 0.
- *  Otherwise, compute least cost and return that cost.
+ *  Send in two elements. If there's an overlap, put that overlap into return dyn char, return 0.
+ *  Otherwise, compute least cost and return that cost and put the median into return dynChar.
+ *
+ *  If the two characters are not compatible (have different length alphabets—it doesn't check to see that the alphabets are the same),
+ *  returns a negative cost.
  */
 double getCost( const dynChar_t* const inDynChar1, size_t whichElem1, const dynChar_t* const inDynChar2, size_t whichElem2, costMtx_t* tcm, dcElement_t* newElem1, dcElement_t* newElem2 );
 
