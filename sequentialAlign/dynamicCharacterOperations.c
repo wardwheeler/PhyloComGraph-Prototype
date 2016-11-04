@@ -20,7 +20,7 @@ uint64_t TestBit( uint64_t* const arr, const size_t k ) {
 }
 
 size_t dynCharSize(const dynChar_t* const character) {
-    size_t totalBits = character -> numElems * character -> alphSize;
+    size_t totalBits = character->numElems * character->alphSize;
     return (totalBits / WORD_WIDTH) + ((totalBits % WORD_WIDTH) ? 1 : 0);
 }
 
@@ -29,23 +29,23 @@ size_t dcElemSize(size_t alphLen) {
 }
 
 uint64_t getGap(const dynChar_t* const character) {
-    return 1 << (character.alphSize - 1);
+    return 1 << (character->alphSize - 1);
 }
 
 int setDCElement( const size_t whichIdx, const dcElement_t* const changeToThis, dynChar_t* const charToBeAltered ) {
-    if ( whichIdx >= charToBeAltered -> numElems ) {
+    if ( whichIdx >= charToBeAltered->numElems ) {
         return 1;
     }
-    if( changeToThis -> alphSize != charToBeAltered -> alphSize ) {
+    if( changeToThis->alphSize != charToBeAltered->alphSize ) {
         return 2;
     }
-    size_t start = whichIdx * charToBeAltered -> alphSize;
-    size_t end   = start + charToBeAltered -> alphSize;
+    size_t start = whichIdx * charToBeAltered->alphSize;
+    size_t end   = start + charToBeAltered->alphSize;
     for( size_t dynCharIdx = start, elementIdx = 0; dynCharIdx < end; dynCharIdx++, elementIdx++ ) {
-        if( TestBit(changeToThis -> element, elementIdx) ) {
-            SetBit(charToBeAltered -> dynChar, dynCharIdx);
+        if( TestBit(changeToThis->element, elementIdx) ) {
+            SetBit(charToBeAltered->dynChar, dynCharIdx);
         } else {
-            ClearBit(charToBeAltered -> dynChar, dynCharIdx);
+            ClearBit(charToBeAltered->dynChar, dynCharIdx);
         }
     }
     return 0;
@@ -54,23 +54,23 @@ int setDCElement( const size_t whichIdx, const dcElement_t* const changeToThis, 
 dcElement_t* getDCElement( const size_t whichChar, const dynChar_t* const inDynChar ) {
     
     dcElement_t* output = malloc( sizeof(dcElement_t) );
-    output -> alphSize = 0;
-    output -> element  = calloc( dcElemSize( inDynChar -> alphSize ), INT_WIDTH );
+    output->alphSize = 0;
+    output->element  = calloc( dcElemSize( inDynChar->alphSize ), INT_WIDTH );
 
     // fail if prereqs aren't met or alloc failed
-    if (  whichChar >= inDynChar -> numElems || output -> element == NULL ) {
+    if (  whichChar >= inDynChar->numElems || output->element == NULL ) {
         return output;
     }
-    output -> alphSize = inDynChar -> alphSize;
+    output->alphSize = inDynChar->alphSize;
     
     // copy values
-    size_t start = whichChar * inDynChar -> alphSize;
-    size_t end   = start + inDynChar -> alphSize;
+    size_t start = whichChar * inDynChar->alphSize;
+    size_t end   = start + inDynChar->alphSize;
     for( size_t getIdx = start, setIdx = 0; getIdx < end; getIdx++, setIdx++ ) {
-        if( TestBit(inDynChar -> dynChar, getIdx) ) {
-            SetBit(output -> element, setIdx);
+        if( TestBit(inDynChar->dynChar, getIdx) ) {
+            SetBit(output->element, setIdx);
         } else { // do I need this? I calloc'ed
-            ClearBit(output -> element, setIdx);
+            ClearBit(output->element, setIdx);
         }
     }
     return output;
@@ -79,13 +79,13 @@ dcElement_t* getDCElement( const size_t whichChar, const dynChar_t* const inDynC
 dcElement_t* makeDCElement( const size_t alphLen, const uint64_t value ) {
     // First create dynamic character with empty character field.
     dcElement_t* output = malloc( sizeof(dcElement_t) );
-    output -> alphSize  = alphLen;
-    output -> element   = calloc( dcElemSize(alphLen), INT_WIDTH ) ;
+    output->alphSize  = alphLen;
+    output->element   = calloc( dcElemSize(alphLen), INT_WIDTH ) ;
     
     // need a check here for longer alphabets
     for( size_t bitIdx = 0; bitIdx < alphLen; bitIdx++ ) {
         if( value & (CANONICAL_ONE << bitIdx) ) {
-            SetBit(output -> element, bitIdx);
+            SetBit(output->element, bitIdx);
         }
     }
     return output;
@@ -93,38 +93,49 @@ dcElement_t* makeDCElement( const size_t alphLen, const uint64_t value ) {
 
 double getCost( const dynChar_t* const inDynChar1, size_t whichElem1, const dynChar_t* const inDynChar2, size_t whichElem2, 
                costMtx_t* tcm, dcElement_t* newElem1 ) {
-    if (  newElem1 -> alphSize != inDynChar1 -> alphSize 
-       || newElem2 -> alphSize != inDynChar1 -> alphSize
-       || inDynChar1 -> alphSize != inDynChar2 -> alphSize 
+    if (  newElem1->alphSize != inDynChar1->alphSize 
+       // || newElem2->alphSize != inDynChar1->alphSize
+       || inDynChar1->alphSize != inDynChar2->alphSize 
        ) {
         return -1;
     }
-
-    uint64_t overlap = *(inDynChar1 -> dynChar) & *(inDynChar2 -> dynChar);
+    dcElement_t* char1Element = getDCElement(whichElem1, inDynChar1);
+    dcElement_t* char2Element = getDCElement(whichElem2, inDynChar2);
+    
+    uint64_t overlap = *(char1Element->element) & *(char2Element->element);
     if( overlap ) {
-        *(newElem1 -> element) = overlap;
-        *(newElem2 -> element) = overlap;
+        printf("%llu\n", overlap);
+        *(newElem1->element) = overlap;
+        // *(newElem2->element) = overlap;
         return 0;
+    } else if ( *(char1Element->element) == getGap(inDynChar1) || *(char2Element->element) == getGap(inDynChar1) ) {
+        *(newElem1->element) = *(char1Element->element) | *(char2Element->element);
+        return tcm->gapCost;
+    } else {
+        *(newElem1->element) = *(char1Element->element) | *(char2Element->element);
+        return tcm->subCost;
     }
 
+    /* unused now, but will be needed once CostMatrix is finished
     int curCost = 0;
     uint64_t curElem = 0;
-    for( size_t i = 1; i < inDynChar1 -> alphSize; i++ ) {
-        for( size_t j = 1; j < inDynChar2 -> alphSize; j++ ) {
-            if( TestBit(inDynChar1 -> dynChar, i) && TestBit(inDynChar1 -> dynChar, i) ) {
+    for( size_t i = 1; i < char1Element->alphSize; i++ ) {
+        for( size_t j = 1; j < char2Element->alphSize; j++ ) {
+            if( TestBit(char1Element->element, i) && TestBit(char2Element->element, j) ) {
                 // eventually add lookup here.
-                curCost = tcm -> subCost;
-                SetBit( newElem1 -> element, i );
-                SetBit( newElem2 -> element, j );
+                curCost = tcm->subCost;
+                SetBit( newElem1->element, i );
+                SetBit( newElem1->element, j );
             }
         }
     }
     if( !curCost ) {
-        *(newElem1 -> element) = *(inDynChar1 -> dynChar);
-        *(newElem2 -> element) = *(inDynChar2 -> dynChar);
-        return tcm -> gapCost;
+        *(newElem1->element) = *(char1Element->element);
+        // *(newElem2->element) = *(char2Element->element);
+        return tcm->gapCost;
     }
     return curCost;
+    */
 }
 
 /** 
@@ -139,13 +150,13 @@ double getCost( const dynChar_t* const inDynChar1, size_t whichElem1, const dynC
 dynChar_t* makeDynamicChar( size_t alphLen, size_t numElems, uint64_t* values ) {
     // allocate dynamic character
     dynChar_t* output    = malloc( sizeof(dynChar_t) );
-    output -> alphSize   = alphLen;
-    output -> numElems   = numElems;
-    output -> dynCharLen = dynCharSize( output );
-    output -> dynChar    = calloc( output -> dynCharLen, INT_WIDTH );
+    output->alphSize   = alphLen;
+    output->numElems   = numElems;
+    output->dynCharLen = dynCharSize( output );
+    output->dynChar    = calloc( output->dynCharLen, INT_WIDTH );
 
-    if( output -> dynChar == NULL ) {
-        output -> alphSize = 0;
+    if( output->dynChar == NULL ) {
+        output->alphSize = 0;
         return output;
     }
     for( int elemNum = 0; elemNum < numElems; elemNum++ ) {
@@ -153,7 +164,7 @@ dynChar_t* makeDynamicChar( size_t alphLen, size_t numElems, uint64_t* values ) 
         for( int bitIdx = 0; bitIdx < alphLen; bitIdx++ ) {
             if( values[elemNum] & (CANONICAL_ONE << bitIdx) ) {
 
-                SetBit(output -> dynChar, elemNum * alphLen + bitIdx);
+                SetBit(output->dynChar, elemNum * alphLen + bitIdx);
             }
         }
     }
@@ -161,11 +172,11 @@ dynChar_t* makeDynamicChar( size_t alphLen, size_t numElems, uint64_t* values ) 
 }
 
 void freeDynChar( dynChar_t* p ) {
-    free( p -> dynChar );
+    free( p->dynChar );
     free( p );
 }
 
 void freeDCElem( dcElement_t* p ) {
-    free( p -> element );
+    free( p->element );
     free( p );
 }

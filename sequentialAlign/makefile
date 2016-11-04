@@ -11,9 +11,6 @@ bit-ops : bitArrayExampleC.c bitArrayExampleC.h dynamicCharacterOperations.c dyn
 	gcc -c bitArrayExampleC.c dynamicCharacterOperations.c
 	gcc bitArrayExampleC.o dynamicCharacterOperations.o
 
-cost-matrix: costMtxTest
-
-
 # compiler flags:
 #  -g    adds debugging information to the executable file
 #  -Wall turns on most, but not all, compiler warnings
