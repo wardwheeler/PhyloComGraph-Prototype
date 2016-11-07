@@ -19,13 +19,13 @@ uint64_t TestBit( uint64_t* const arr, const size_t k ) {
     return arr[ k / WORD_WIDTH ] & (CANONICAL_ONE << (k % WORD_WIDTH));
 }
 
-size_t dynCharSize(const dynChar_t* const character) {
-    size_t totalBits = character->numElems * character->alphSize;
+size_t dynCharSize(size_t alphSize, size_t numElems) {
+    size_t totalBits = numElems * alphSize;
     return (totalBits / WORD_WIDTH) + ((totalBits % WORD_WIDTH) ? 1 : 0);
 }
 
-size_t dcElemSize(size_t alphLen) {
-    return (alphLen / WORD_WIDTH) + ((alphLen % WORD_WIDTH) ? 1 : 0);
+size_t dcElemSize(size_t alphSize) {
+    return (alphSize / WORD_WIDTH) + ((alphSize % WORD_WIDTH) ? 1 : 0);
 }
 
 uint64_t getGap(const dynChar_t* const character) {
@@ -56,6 +56,11 @@ dcElement_t* getDCElement( const size_t whichChar, const dynChar_t* const inDynC
     dcElement_t* output = malloc( sizeof(dcElement_t) );
     output->alphSize = 0;
     output->element  = calloc( dcElemSize( inDynChar->alphSize ), INT_WIDTH );
+    if (output->element == NULL) {
+        printf("Out of memory.\n");
+        fflush(stdout);
+        exit(1);
+    }
 
     // fail if prereqs aren't met or alloc failed
     if (  whichChar >= inDynChar->numElems || output->element == NULL ) {
@@ -76,14 +81,19 @@ dcElement_t* getDCElement( const size_t whichChar, const dynChar_t* const inDynC
     return output;
 }
 
-dcElement_t* makeDCElement( const size_t alphLen, const uint64_t value ) {
+dcElement_t* makeDCElement( const size_t alphSize, const uint64_t value ) {
     // First create dynamic character with empty character field.
     dcElement_t* output = malloc( sizeof(dcElement_t) );
-    output->alphSize  = alphLen;
-    output->element   = calloc( dcElemSize(alphLen), INT_WIDTH ) ;
+    output->alphSize  = alphSize;
+    output->element   = calloc( dcElemSize(alphSize), INT_WIDTH );
+    if (output->element == NULL) {
+        printf("Out of memory.\n");
+        fflush(stdout);
+        exit(1);
+    }
     
     // need a check here for longer alphabets
-    for( size_t bitIdx = 0; bitIdx < alphLen; bitIdx++ ) {
+    for( size_t bitIdx = 0; bitIdx < alphSize; bitIdx++ ) {
         if( value & (CANONICAL_ONE << bitIdx) ) {
             SetBit(output->element, bitIdx);
         }
@@ -147,13 +157,23 @@ double getCost( const dynChar_t* const inDynChar1, size_t whichElem1, const dynC
  *
  *  If this is used, need to free afterwards.
  */
-dynChar_t* makeDynamicChar( size_t alphLen, size_t numElems, uint64_t* values ) {
+dynChar_t* makeDynamicChar( size_t alphSize, size_t numElems, uint64_t* values ) {
     // allocate dynamic character
-    dynChar_t* output    = malloc( sizeof(dynChar_t) );
-    output->alphSize   = alphLen;
+    dynChar_t* output  = malloc( sizeof(dynChar_t) );
+    if (output == NULL) {
+        printf("Out of memory.\n");
+        fflush(stdout);
+        exit(1);
+    }
+    output->alphSize   = alphSize;
     output->numElems   = numElems;
-    output->dynCharLen = dynCharSize( output );
+    output->dynCharLen = dynCharSize( alphSize, numElems );
     output->dynChar    = calloc( output->dynCharLen, INT_WIDTH );
+    if (output->dynChar == NULL) {
+        printf("Out of memory.\n");
+        fflush(stdout);
+        exit(1);
+    }
 
     if( output->dynChar == NULL ) {
         output->alphSize = 0;
@@ -161,10 +181,58 @@ dynChar_t* makeDynamicChar( size_t alphLen, size_t numElems, uint64_t* values ) 
     }
     for( int elemNum = 0; elemNum < numElems; elemNum++ ) {
         
-        for( int bitIdx = 0; bitIdx < alphLen; bitIdx++ ) {
+        for( int bitIdx = 0; bitIdx < alphSize; bitIdx++ ) {
             if( values[elemNum] & (CANONICAL_ONE << bitIdx) ) {
 
-                SetBit(output->dynChar, elemNum * alphLen + bitIdx);
+                SetBit(output->dynChar, elemNum * alphSize + bitIdx);
+            }
+        }
+    }
+    return output;
+}
+
+int* dynCharToIntArr(dynChar_t* input) {
+    int* output = calloc(input->numElems, INT_WIDTH);
+    if (output != NULL) {
+        for( size_t i = 0; i < input->numElems; i++ ) {
+            output[i] = (int) *(getDCElement(i, input)->element);
+        }
+    } else {
+        printf("Out of memory.\n");
+        fflush(stdout);
+        exit(1);
+    }
+    return output;
+}
+
+void intArrToDynChar( size_t alphSize, size_t arrayLen, int* input, dynChar_t* output) {
+    dcElement_t* changeToThis = makeDCElement( alphSize, CANONICAL_ZERO );
+    output->alphSize   = alphSize;
+    output->numElems   = arrayLen;
+    output->dynCharLen = dynCharSize(alphSize, arrayLen);
+    for( size_t i = 0; i < arrayLen; i++ ) {
+        *changeToThis->element = (uint64_t) input[i];
+        setDCElement( i, changeToThis, output );
+    }
+    freeDCElem(changeToThis);
+}
+
+uint64_t* intArrToBitArr( size_t alphSize, size_t arrayLen, int* input ) {
+    uint64_t* output = calloc( dynCharSize(alphSize, arrayLen), INT_WIDTH );
+    if (output == NULL) {
+        printf("Out of memory.\n");
+        fflush(stdout);
+        exit(1);
+    }
+    uint64_t convert; // to point to int whose bit values are tested
+
+    for( size_t arrIdx = 0, shift = 0; arrIdx < arrayLen; arrIdx++, shift += alphSize ) {
+        for( size_t intIdx = 0; intIdx < alphSize; intIdx++ ) {
+            convert = (uint64_t) input[arrIdx];
+            if( TestBit(&convert, intIdx) ) {
+                SetBit(output, shift + intIdx);
+            } else {
+                ClearBit(output, shift + intIdx);
             }
         }
     }

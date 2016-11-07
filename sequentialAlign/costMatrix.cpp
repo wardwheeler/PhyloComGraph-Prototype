@@ -32,38 +32,26 @@ int getCost(dcElement_t& left, dcElement_t& right, dcElement_t& retMedian) {
     return foundCost;
 }
 
-costMedian computeCostMedian(keys& key, ) {
+costMedian computeCostMedian(keys& key) {
     for (SEQT ambElem1 = 1; ambElem1 <= 31; ambElem1++) { // for every possible value of ambElem1, ambElem2
         for (SEQT ambElem2 = 1; ambElem2 <= 31; ambElem2++) {
-                curCost = 0; // don't actually need to do this
+                curCost = 0; // don't actually need to initialize this
                 minCost = INT_MAX; 
-                median1 = median2  = 0;
+                median  = 0;
                 for (int nucleotide = 1; nucleotide <= alphSize; nucleotide++) {
-                    // TODO: if we do maxCost, then we should find individual max's for each distance below?
-                    curCost2d = distance (tcm, alphSize, retMtx->lcm, nucleotide, ambElem1) +
+                    curCost = distance (key) +
                                 distance (tcm, alphSize, retMtx->lcm, nucleotide, ambElem2);
                     // now seemingly recreating logic in distance(), but that was to get the cost for each
                     // ambElem; now we're combining those costs get overall cost and median
-                    if (curCost2d < minCost2d) {
-                        minCost2d = curCost2d;
-                        median2d  = 1 << (nucleotide - 1); // median1 | median2;
+                    if (curCost < minCost) {
+                        minCost = curCost;
+                        median  = 1 << (nucleotide - 1); 
                     } else if (curCost2d == minCost2d) {
-                        median2d |= 1 << (nucleotide - 1); // median1 | median2;
+                        median |= 1 << (nucleotide - 1); 
                     }
                 } // nucleotide
-                
-                if (!is_2d) {
-                    // printf("seq1: %d,    seq2: %d,    cost: %d,    median: %d\n", 
-                    //        ambElem1, ambElem2, minCost2d, median2d);
-                    cm_set_cost_3d   (ambElem1, ambElem2, ambElem3, minCost3d, (cost_matrices_3d_p) retMtx);
-                    cm_set_median_3d (ambElem1, ambElem2, ambElem3, median3d,  (cost_matrices_3d_p) retMtx);
-                    // cm_set_worst     (ambElem1, ambElem2, max_2d,    (cost_matrices_2d_p) retMtx);    // no worst in 3d
-                    // if( power_2(ambElem1) && power_2(ambElem2) && power_2(ambElem3)) {
-                    //     printf("3d    seq1: %2d,    seq2: %2d,    seq3: %2d,    cost: %2d,    median: %2d\n", 
-                    //       ambElem1, ambElem2, ambElem3, minCost3d, median3d);
-                    // }
-                }
-            } // ambElem3
+                            
+            } // ambElem2
             // printf("ambElem1:  %2hhu,   ambElem2: %2hhu\n", ambElem1, ambElem2);
             // printf("median: %2d,   min:   %2d\n", median2d, minCost2d);
             cm_set_cost_2d   (ambElem1, ambElem2, minCost2d, (cost_matrices_2d_p) retMtx);
@@ -85,7 +73,7 @@ costMedian computeCostMedian(keys& key, ) {
  *
  *  Requires symmetric, if not metric, matrix.
  */
-int distance (keys key) {
+int distance (keys& key) {
 
     int min     = INT_MAX;
     int curCost = 0;

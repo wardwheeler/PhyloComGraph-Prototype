@@ -16,3 +16,7 @@ bit-ops : bitArrayExampleC.c bitArrayExampleC.h dynamicCharacterOperations.c dyn
 #  -Wall turns on most, but not all, compiler warnings
 costMtxTest: costMtxTest.cpp costMatrix.h costMatrix.cpp dynamicCharacterOperations.h dynamicCharacterOperations.c
 	g++ -g -Wall -o costMtxTest costMtxTest.cpp
+
+yu_code: main.c seqAlignForHaskell.c seqAlignForHaskell.h dynamicCharacterOperations.c dynamicCharacterOperations.h
+	gcc -c seqAlignForHaskell.c dynamicCharacterOperations.c
+	gcc main.c seqAlignForHaskell.o dynamicCharacterOperations.o

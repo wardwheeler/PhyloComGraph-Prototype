@@ -8,7 +8,7 @@
  *
  *  Prints a representation of a dynamic character as a matrix of bits.
  */
-void printCharBits( dynChar_t* input ) {
+void printCharBits( const dynChar_t* const input ) {
     printf("[\n");
     size_t alphLen = input->alphSize;
 
@@ -41,20 +41,32 @@ void printElemBits( const dcElement_t* const input ) {
     printf(" ]\n");
 }
 
+void printDynChar( const dynChar_t* const input ) {
+    printf("\nAlphabet Size:       %lu\n", input->alphSize);
+    printf("Number of Elements:  %lu\n", input->numElems);
+    printf("Internal arr Length: %lu ", input->dynCharLen);
+    printf("(should need %lu.)\n", dynCharSize(input->alphSize, input->numElems) );
+    printCharBits(input);
+}
+
 /** 
- *  A sample program that takes in two dynamic characters, and wrote the result of any computations to a third
+ *  A sample program that takes in two dynamic characters, and writes the result of any computations to a third
  *  dynamic character. The third character is allocated on Haskell side and passed in by reference.
  *  Returns 0 on correct exit, 1 on allocation failure. This was used to test the Haskell FFI.
+ *
+ *  This is deprecated and has been replaced by exampleInterfaceFn in main.c
  */
-int exampleInterfaceFn(dynChar_t* seqA, dynChar_t* seqB, alignResult_t* result) {
-    // Because the characters are packed (meaning multiple characters will be in a single int,
-    // we need the total number of ints in our array, which is 
-    size_t buffLenA = dynCharSize(seqA);   
+/* int exampleInterfaceFnOld(dynChar_t* seqA, dynChar_t* seqB, alignResult_t* result) {
+    // Because the characters are packed (meaning multiple characters will be in a single uint64_t),
+    // we need the total number of uint64_ts in our array, which is computed in dynCharSize().
+    // 
+    size_t buffLenA = dynCharSize(seqA);
     size_t buffLenB = dynCharSize(seqB);
 
     // Using calloc out of an abundance of caution. Shouldn't need it, as we overwrite the entire buffer.
     // This will have to be freed in the Haskell end of things.
-    // See note in .h file re: uint64_t
+    // See note in .h file re: uint64_t.
+    // Remember to deallocate later.
     uint64_t* buffer = calloc( buffLenA + buffLenB, INT_WIDTH); // in bytes. int array, so don't need \0
 
     // Now check that calloc() didn't fail.
@@ -75,9 +87,12 @@ int exampleInterfaceFn(dynChar_t* seqA, dynChar_t* seqB, alignResult_t* result) 
     // now assign to struct for retrieval by Haskell FFI
     result->finalWt     = buffLenA + buffLenB; // Real cost goes here later
     result->finalLength = buffLenA + buffLenB;
-    result->finalChar   = buffer;
+    memcpy(result->finalChar1, buffer, buffLenA + buffLenB);
+    free(buffer);
     return 0;
 }
+*/
+
 
 /**
  *  This function purely for testing, and as example usage.
@@ -190,8 +205,8 @@ int main() {
     tcm->gapCost = 2;
 
     // next to get values back
-    dcElement_t* alignElem1 = makeDCElement( alphabetLen, (uint64_t) 0 );
-    // dcElement_t* alignElem2 = makeDCElement( alphabetLen, (uint64_t) 0 );
+    dcElement_t* alignElem1 = makeDCElement( alphabetLen, CANONICAL_ZERO );
+    // dcElement_t* alignElem2 = makeDCElement( alphabetLen, CANONICAL_ZERO );
 
     //getDCElement( alphabetLen, &char3, &char4 );
     int cost = getCost( char1, 1, char3, 0, tcm, alignElem1 );
@@ -221,8 +236,34 @@ int main() {
     printf("%d\n", cost);
     printElemBits( alignElem1 );
 
+
+    int* toPrint = dynCharToIntArr(char1);
+
+    printf("\n\ndynamic character to int array:");
+    printf("\nInt array after conversion. \nStarting at 0 every even num is 13. Odds are their own indices:\n");
+    for(size_t i = 0; i < char1->numElems; i++) {
+        printf("%d, ", toPrint[i]);
+    }
+    printf("\n");
+
+    dynChar_t* char4 = makeDynamicChar( char1->alphSize, char1->numElems, values );
+
+    printf("\n\nint array to dynamic character:");
+    intArrToDynChar( char1->alphSize, char1->numElems, toPrint, char4 );
+    printDynChar(char4);
+
+    printf("\n\nint array to bit array:");
+    fflush(stdout);
+    free(char4->dynChar);
+
+    char4->dynChar = intArrToBitArr( char1->alphSize, char1->numElems, toPrint );
+
+    printDynChar(char4);
+
+    free(toPrint);
     freeDynChar( char1 );
     freeDynChar( char3 );
+    freeDynChar( char4 );
     freeDCElem( alignElem1 );
     // freeDCElem( alignElem2 );
 

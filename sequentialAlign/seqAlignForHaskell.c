@@ -1,100 +1,15 @@
-//
-//  main.c
+//  aligner.c
 //  version_Haskell_bit
 //
 //  Created by Yu Xiang on 11/1/16.
 //  Copyright © 2016 Yu Xiang. All rights reserved.
-//
 
-
-// recent changes: 1. Changed all malloc()s to calloc()s. calloc() initializes memory, as well as allocating.
-//                    This could very easily be changed back for speed efficiency, but it kept showing up as an error in valgrind.
-//                 2. Added a return value of 2. Now 0 is success, 1 is memory allocation error, 2 is inputs were both 0 length.
-//                 3. Changed strncpy(retAlign, _, _) to be a series of loops, each terminating at '*'.
-//                    Also terminated both strings with '\0', for good measure.
-//                 4. Made INIT_LENGTH a const.
-//                 5. INIT_LENGTH = 2 * retAlign.alignmentLength - 1.
-//                 6. Made LENGTH a const.
-//                 7. Some style changes to enhance legibility for myself.
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+
 #include "seqAlignForHaskell.h"
-
-int main() {
-    
-   // char seqA_main[] = "CE\0";
-   // char seqB_main[] = "GCT\0";   //  Yu_Edit: here 100 is the maximum length of the sequences
-    
-    int seqA_main[] = {1, 2, 3};
-    int seqB_main[] = {4, 5, 6};   //  Yu_Edit: here 100 is the maximum length of the sequences
-
-    
-    //int wtInsertDel = 20;  //weight of insertion/deletion
-    //int wtSub = 10;        //weigth of substitution
-    
-    
-    int success = 1;
-    struct retType retAlign;
-//    long int length = strlen(seqA_main) + strlen(seqB_main) + 5;
-    long int length = sizeof(seqA_main)/sizeof(seqA_main[0]) + sizeof(seqB_main)/sizeof(seqB_main[0]) + 5;
-    
- //   retAlign.seq1 = calloc(length, sizeof(char));
-    retAlign.seq1 = calloc(length, sizeof(int));
-  //  retAlign.seq2 = calloc(length, sizeof(char));
-    retAlign.seq2 = calloc(length, sizeof(int));
-    
-    if( retAlign.seq1 == NULL || retAlign.seq2 == NULL ) {
-        printf("Memory failure!\n");
-        return 1;
-    }
-    // retAlign.seq1[length - 1] = '\0';
-    // retAlign.seq2[length - 1] = '\0';
-    retAlign.alignmentLength = length;
-    
-    //    // printf("Please input two sequences A and B each of length at most 10 over alphabet {A,T,C,G}.\n");
-    //    // printf("Input sequence A:\n");
-    //    scanf(" %s", seqA);                         // important to have a space before %s!
-    //    // printf("sequence A = %s\n", seqA);
-    //
-    //    // printf("Input sequence B:\n");
-    //    scanf(" %s", seqB);
-    //    // printf("sequence B = %s\n", seqB);
-    
-    int wtSub = 1, wtInsertDel = 1;
-    
-    //    // printf("Please input weights of substitution and insertion/deletion (both of them are integers less than 50)\n");
-    //    // printf("Input weight of substitution:\n");
-    //    scanf("%d", &wtSub);
-    //    // printf("weight of substitution = %d\n", wtSub);
-    //
-    //    // printf("Input weight of insertion/deletion:\n");
-    //    scanf("%d", &wtInsertDel);
-    //    // printf("weight of insertion/deletion = %d\n", wtInsertDel);
-    
-    
-    success = aligner(seqA_main, seqB_main, wtInsertDel, wtSub, &retAlign);
-    
-    if (success == 0) {
-        printf("\nSuccess!\n\n");
-        printf("The aligned sequences are: \n%s\n%s\n", retAlign.seq1, retAlign.seq2);
-        printf("The cost of the alignment is: %d\n", retAlign.weight);
-        // for(int i = 0; i < length; ++i) {
-        //     printf("%d\n",(int)retAlign.seq1[i]);
-        // }
-    } else {
-        printf("Fail!\n");
-    }
-    free(retAlign.seq1);
-    free(retAlign.seq2);
-    
-}
-
-
-
-
 
 // EDIT: removed all // printf()s, as fn needs to be pure
 
@@ -106,17 +21,25 @@ int main() {
 // Obviously, feel free to make it yet more so.
 
 //int aligner(char *seq1, char *seq2, int wtInsertDel, int wtSub, struct retType* retAlign) {
-int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* retAlign) {
+int aligner(int *seq1, size_t seq1Len, int *seq2, size_t seq2Len, size_t alphSize, 
+            int wtInsertDel, int wtSub, retType_t* retAlign) {
     
     
     //Yu_Edit: changed the length of INIT_LENGTH
-    const long int INIT_LENGTH = 2 * retAlign->alignmentLength - 1; // Will be used to initialize all subsequent alignment arrays.
-    // Since a single array with hold both seqs, and each seq has length
+    const long int INIT_LENGTH = 2 * (seq1Len + seq2Len); // Will be used to initialize all subsequent alignment arrays.
+    // int arrays are not terminated with a special character, so must know length of each array. Also, don't need extra
+    // space for terminal character.
+    // I updated retType so that it returns two sequences. I thought I'd done that before, but I guess not.
+    // Since sequences are int arrays, they're not terminated by \0, and therefore the two lengths are also necessary
+
+    // Since a single array will hold both seqs, and each seq has length
     // alignmentLength, this number needs to be twice that, plus 1 for NULL.
     // However, the length was originally padded for a NULL, so one of those needs
     // to be removed.
     
-    const long int LENGTH = retAlign->alignmentLength - 5; // strlen(seq1) + strlen(seq2);
+    const long int LENGTH = seq1Len + seq2Len - 5; // strlen(seq1) + strlen(seq2);
+
+    const int GAP = 1 << (alphSize - 1);
     
     
     //printf("length is %ld\n", LENGTH);
@@ -126,7 +49,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     }
 
     
- //   char* initArr = calloc( INIT_LENGTH, sizeof(char) );
+ //   char* initArr = calloc( INIT_LENGTH, sizeof(int) );
     int* initArr = calloc( INIT_LENGTH, sizeof(int) );
     
     
@@ -171,13 +94,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     };
     
     for (int i = 0; i < 3; i++) {
-     //   path[i].partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+     //   path[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         path[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         if( path[i].partialAlign == NULL ) {
             return 1;
         }
-     //   strncpy(path[i].partialAlign, initArr, sizeof(char) * INIT_LENGTH);
-        strncpy(path[i].partialAlign, initArr, sizeof(int) * INIT_LENGTH);   // !! need to be replaced by int counterpart
+     //   memcpy(path[i].partialAlign, initArr, sizeof(int) * INIT_LENGTH);
+        memcpy(path[i].partialAlign, initArr, sizeof(int) * INIT_LENGTH);   // !! need to be replaced by int counterpart
     }
     
     //    for (int i = 0; i < 3; i++) {
@@ -236,7 +159,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     };
     
     for (int i = 0; i < 3; i++) {
-      //  pathTempFirst[i].partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+      //  pathTempFirst[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         pathTempFirst[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         if( pathTempFirst[i].partialAlign == NULL ) {
             return 1;
@@ -244,7 +167,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     }
     
     for (int i = 0; i < 3; i++) {
-        strncpy(pathTempFirst[i].partialAlign, initArr, sizeof(char) * INIT_LENGTH);  // !! need to be replaced by int counterpart
+        memcpy(pathTempFirst[i].partialAlign, initArr, sizeof(int) * INIT_LENGTH);  // !! need to be replaced by int counterpart
     }
     
     
@@ -261,7 +184,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
         {.partialWt = 0, .partialTrueWt = 0, .posStringA = 0, .posStringB = 0, .posTrueA = 0, .posTrueB = 0, .flagWhichTree = 1}};
     
     for (int i = 0; i < 3; i++) {
-    //    pathTempSecond[i].partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+    //    pathTempSecond[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         pathTempSecond[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         if( pathTempSecond[i].partialAlign == NULL ) {
             return 1;
@@ -269,24 +192,24 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     }
     
     for (int i = 0; i < 3; i++) {
-        strncpy(pathTempSecond[i].partialAlign, initArr, sizeof(char) * INIT_LENGTH);   // !! need to be replaced by int counterpart
+        memcpy(pathTempSecond[i].partialAlign, initArr, sizeof(int) * INIT_LENGTH);   // !! need to be replaced by int counterpart
     }
     
     
     struct align pathFirstInfinite = {.partialWt = 100000, .partialTrueWt = 100000, .posStringA = 0, .posStringB = 0, .posTrueA = 0, .posTrueB = 0, .flagWhichTree = 1};
-  //  pathFirstInfinite.partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+  //  pathFirstInfinite.partialAlign = calloc( INIT_LENGTH, sizeof(int) );
     pathFirstInfinite.partialAlign = calloc( INIT_LENGTH, sizeof(int) );
     if( pathFirstInfinite.partialAlign == NULL ) {
         return 1;
     }
-    strncpy(pathFirstInfinite.partialAlign, initArr, sizeof(char) * INIT_LENGTH);      // !! need to be replaced by int counterpart
+    memcpy(pathFirstInfinite.partialAlign, initArr, sizeof(int) * INIT_LENGTH);      // !! need to be replaced by int counterpart
     
     struct align pathSecondInfinite = {.partialWt = 100000, .partialTrueWt = 100000, .posStringA = 0, .posStringB = 0, .posTrueA = 0, .posTrueB = 0, .flagWhichTree = 2};
-    pathSecondInfinite.partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+    pathSecondInfinite.partialAlign = calloc( INIT_LENGTH, sizeof(int) );
     if( pathSecondInfinite.partialAlign == NULL ) {
         return 1;
     }
-    strncpy(pathSecondInfinite.partialAlign, initArr, sizeof(char) * INIT_LENGTH);   // !! need to be replaced by int counterpart
+    memcpy(pathSecondInfinite.partialAlign, initArr, sizeof(int) * INIT_LENGTH);   // !! need to be replaced by int counterpart
     
     //    struct align pathFirstInfinite = {100000, 100000, "********************", 0, 0, 0, 0, 1};
     //    struct align pathSecondInfinite = {100000, 100000, "********************", 0, 0, 0, 0, 2};
@@ -306,11 +229,11 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     {.partialWt = 0, .partialTrueWt = 0, .posStringA = 0, .posStringB = 0, .posTrueA = 0, .posTrueB = 0, .flagWhichTree = 1};
     
     
-    finalAlign.partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+    finalAlign.partialAlign = calloc( INIT_LENGTH, sizeof(int) );
     if( finalAlign.partialAlign == NULL ) {
         return 1;
     }
-    strncpy(finalAlign.partialAlign, initArr, sizeof(char) * INIT_LENGTH);   // !! need to be replaced by int counterpart
+    memcpy(finalAlign.partialAlign, initArr, sizeof(int) * INIT_LENGTH);   // !! need to be replaced by int counterpart
     
     
     
@@ -323,14 +246,14 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     //    struct align finalAlign;     // output the aligned sequences and the final distance
     
     
-  //  char* seqA = calloc(strlen(seq1) + 1, sizeof(char));
+  //  char* seqA = calloc(strlen(seq1) + 1, sizeof(int));
     int* seqA = calloc(sizeof(seq1)/sizeof(seq1[0]) + 1, sizeof(int));
     
     // Now, test for allocation. Return 1 if it fails.
     if( seqA == NULL ) {
         return 1;
     }
- //   char* seqB = calloc(strlen(seq2) + 1, sizeof(char));
+ //   char* seqB = calloc(strlen(seq2) + 1, sizeof(int));
     int* seqB = calloc(sizeof(seq2)/sizeof(seq2[0]) + 1, sizeof(int));
     
     // Now, test for allocation. Return 1 if it fails.
@@ -338,8 +261,8 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
         return 1;
     }
     
-    strncpy(seqA, seq1, sizeof(char) * (strlen(seq1) + 1));       // !! need to be replaced by int counterpart
-    strncpy(seqB, seq2, sizeof(char) * (strlen(seq2) + 1));      // !! need to be replaced by int counterpart
+    memcpy(seqA, seq1, sizeof(int) * (seq1Len + 1));       // !! need to be replaced by int counterpart
+    memcpy(seqB, seq2, sizeof(int) * (seq2Len + 1));      // !! need to be replaced by int counterpart
     
     // printf("seqA is %s\n", seqA);
     // printf("seqB is %s\n", seqB);
@@ -370,12 +293,12 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     //  char alignFinal[20];
     
     
- //   char * alignFinal = calloc( INIT_LENGTH, sizeof(char) );
+ //   char * alignFinal = calloc( INIT_LENGTH, sizeof(int) );
     int * alignFinal = calloc( INIT_LENGTH, sizeof(int) );
     if( alignFinal == NULL ) {
         return 1;
     }
-    strncpy(alignFinal, initArr, sizeof(char) * INIT_LENGTH);        // !! need to be replaced by int counterpart
+    memcpy(alignFinal, initArr, sizeof(int) * INIT_LENGTH);        // !! need to be replaced by int counterpart
     
     
     //  int wtInsertDel = 20;  //weight of insertion/deletion
@@ -439,12 +362,12 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     //    };
     
     for (i = 0; i < 3; i++) {
-      //  pathFirst[i].partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+      //  pathFirst[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         pathFirst[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         if( pathFirst[i].partialAlign == NULL ) {
             return 1;
         }
-        strncpy(pathFirst[i].partialAlign, initArr, sizeof(char) * INIT_LENGTH);   // !! need to be replaced by int counterpart
+        memcpy(pathFirst[i].partialAlign, initArr, sizeof(int) * INIT_LENGTH);   // !! need to be replaced by int counterpart
         
     }
     
@@ -461,9 +384,9 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     pathFirst[0].partialAlign[LENGTH] = seqB[0];
     
     pathFirst[1].partialAlign[0] = seqA[0];
-    pathFirst[1].partialAlign[LENGTH]='-';               //  !! need to change to the integer correponding to '-'
+    pathFirst[1].partialAlign[LENGTH]=GAP;               //  !! need to change to the integer correponding to '-'
     
-    pathFirst[2].partialAlign[0]='-';                   //  !! need to change to the integer correponding to '-'
+    pathFirst[2].partialAlign[0]=GAP;                   //  !! need to change to the integer correponding to '-'
     pathFirst[2].partialAlign[LENGTH] = seqB[0];
     
     
@@ -509,12 +432,12 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     
     
     for (i = 0; i < 3; i++) {
-    //    pathSecond[i].partialAlign = calloc( INIT_LENGTH, sizeof(char) );
+    //    pathSecond[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         pathSecond[i].partialAlign = calloc( INIT_LENGTH, sizeof(int) );
         if( pathSecond[i].partialAlign == NULL ) {
             return 1;
         }
-        strncpy(pathSecond[i].partialAlign, initArr, sizeof(char) * INIT_LENGTH);         // !! need to be replaced by int counterpart
+        memcpy(pathSecond[i].partialAlign, initArr, sizeof(int) * INIT_LENGTH);         // !! need to be replaced by int counterpart
         
     }
     
@@ -523,10 +446,10 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     pathSecond[0].partialAlign[LENGTH] = seqB[0];
     
     pathSecond[1].partialAlign[0] = seqA[0];
-    pathSecond[1].partialAlign[LENGTH]='-';            //  !! need to change to the integer correponding to '-'
+    pathSecond[1].partialAlign[LENGTH]=GAP;            //  !! need to change to the integer correponding to '-'
 
     
-    pathSecond[2].partialAlign[0]='-';                 //  !! need to change to the integer correponding to '-'
+    pathSecond[2].partialAlign[0]=GAP;                 //  !! need to change to the integer correponding to '-'
     pathSecond[2].partialAlign[LENGTH] = seqB[0];
     
     int arrayInitial[2][6]= {                         //  NEED UPDATE! now we assume seqA[0]! = seqB[0]
@@ -572,7 +495,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             path[i].posTrueA = pathFirst[0].posTrueA;
             path[i].posTrueB = pathFirst[0].posTrueB;
             path[i].flagWhichTree = pathFirst[0].flagWhichTree;
-            strncpy(path[i].partialAlign, pathFirst[0].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(path[i].partialAlign, pathFirst[0].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
         }
         else if (kInitial == 0 && 19 < indicatorInitial && indicatorInitial < 22) {
             //     path[i] = pathFirst[1];
@@ -584,7 +507,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             path[i].posTrueA = pathFirst[1].posTrueA;
             path[i].posTrueB = pathFirst[1].posTrueB;
             path[i].flagWhichTree = pathFirst[1].flagWhichTree;
-            strncpy(path[i].partialAlign, pathFirst[1].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(path[i].partialAlign, pathFirst[1].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
         }
         else if (kInitial == 0 && 29< indicatorInitial && indicatorInitial <32) {
             //      path[i] = pathFirst[2];
@@ -596,7 +519,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             path[i].posTrueA = pathFirst[2].posTrueA;
             path[i].posTrueB = pathFirst[2].posTrueB;
             path[i].flagWhichTree = pathFirst[2].flagWhichTree;
-            strncpy(path[i].partialAlign, pathFirst[2].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(path[i].partialAlign, pathFirst[2].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
         }
         else if (kInitial == 1 && 9< indicatorInitial && indicatorInitial <12) {
             //  path[i] = pathSecond[0];
@@ -608,7 +531,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             path[i].posTrueA = pathSecond[0].posTrueA;
             path[i].posTrueB = pathSecond[0].posTrueB;
             path[i].flagWhichTree = pathSecond[0].flagWhichTree;
-            strncpy(path[i].partialAlign, pathSecond[0].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(path[i].partialAlign, pathSecond[0].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
         }
         else if (kInitial == 1 && 19< indicatorInitial && indicatorInitial <22) {
             //      path[i] = pathSecond[1];
@@ -620,7 +543,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             path[i].posTrueA = pathSecond[1].posTrueA;
             path[i].posTrueB = pathSecond[1].posTrueB;
             path[i].flagWhichTree = pathSecond[1].flagWhichTree;
-            strncpy(path[i].partialAlign, pathSecond[1].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(path[i].partialAlign, pathSecond[1].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
         }
         //   else path[i] = pathSecond[2];
         else{
@@ -631,7 +554,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             path[i].posTrueA = pathSecond[2].posTrueA;
             path[i].posTrueB = pathSecond[2].posTrueB;
             path[i].flagWhichTree = pathSecond[2].flagWhichTree;
-            strncpy(path[i].partialAlign, pathSecond[2].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(path[i].partialAlign, pathSecond[2].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
         }
         
     }
@@ -651,7 +574,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
         pathFirst[i].posTrueA = pathFirstInfinite.posTrueA;
         pathFirst[i].posTrueB = pathFirstInfinite.posTrueB;
         pathFirst[i].flagWhichTree = pathFirstInfinite.flagWhichTree;
-        strncpy(pathFirst[i].partialAlign, pathFirstInfinite.partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+        memcpy(pathFirst[i].partialAlign, pathFirstInfinite.partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
         
         pathSecond[i].partialWt = pathSecondInfinite.partialWt;
         pathSecond[i].partialTrueWt = pathSecondInfinite.partialTrueWt;
@@ -660,7 +583,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
         pathSecond[i].posTrueA = pathSecondInfinite.posTrueA;
         pathSecond[i].posTrueB = pathSecondInfinite.posTrueB;
         pathSecond[i].flagWhichTree = pathSecondInfinite.flagWhichTree;
-        strncpy(pathSecond[i].partialAlign, pathSecondInfinite.partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+        memcpy(pathSecond[i].partialAlign, pathSecondInfinite.partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
     }
     
     
@@ -675,7 +598,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             pathFirst[iFirst].posTrueA = path[i].posTrueA;
             pathFirst[iFirst].posTrueB = path[i].posTrueB;
             pathFirst[iFirst].flagWhichTree = path[i].flagWhichTree;
-            strncpy(pathFirst[iFirst].partialAlign, path[i].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(pathFirst[iFirst].partialAlign, path[i].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
             iFirst++;
         }
         else if(path[i].flagWhichTree == 2) {
@@ -688,7 +611,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             pathSecond[iSecond].posTrueA = path[i].posTrueA;
             pathSecond[iSecond].posTrueB = path[i].posTrueB;
             pathSecond[iSecond].flagWhichTree = path[i].flagWhichTree;
-            strncpy(pathSecond[iSecond].partialAlign, path[i].partialAlign, sizeof(char) * INIT_LENGTH); // !! need to be replaced by int counterpart
+            memcpy(pathSecond[iSecond].partialAlign, path[i].partialAlign, sizeof(int) * INIT_LENGTH); // !! need to be replaced by int counterpart
             iSecond++;
         }
     }
@@ -718,7 +641,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     //test function
     
     int temp;
-    temp = trueWt(&pathFirst[0], wtInsertDel, wtSub, LENGTH);
+    temp = trueWt(&pathFirst[0], GAP, wtInsertDel, wtSub, LENGTH);
     // printf("test weight is: %d\n", temp);
     //    path[i] = pathTempFirst[k];        // update the candidate paths
     //
@@ -939,7 +862,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             pathTempFirst[j].posTrueA = pathFirst[j].posTrueA;
             pathTempFirst[j].posTrueB = pathFirst[j].posTrueB;
             pathTempFirst[j].flagWhichTree = pathFirst[j].flagWhichTree;
-            strncpy(pathTempFirst[j].partialAlign, pathFirst[j].partialAlign, sizeof(char) * INIT_LENGTH);
+            memcpy(pathTempFirst[j].partialAlign, pathFirst[j].partialAlign, sizeof(int) * INIT_LENGTH);
             //     pathTempFirst[j] = pathFirst[j];
             
         }
@@ -975,7 +898,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             pathFirst[i].posTrueA = pathTempFirst[kFirst].posTrueA;
             pathFirst[i].posTrueB = pathTempFirst[kFirst].posTrueB;
             pathFirst[i].flagWhichTree = pathTempFirst[kFirst].flagWhichTree;
-            strncpy(pathFirst[i].partialAlign, pathTempFirst[kFirst].partialAlign, sizeof(char) * INIT_LENGTH);
+            memcpy(pathFirst[i].partialAlign, pathTempFirst[kFirst].partialAlign, sizeof(int) * INIT_LENGTH);
             
             
             
@@ -1002,7 +925,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 pathFirst[i].posTrueB++;
                 if (flagEmpty[0] == 0) {
                     
-                    pathFirst[i].partialTrueWt = trueWt(&pathFirst[i], wtInsertDel, wtSub, LENGTH);
+                    pathFirst[i].partialTrueWt = trueWt(&pathFirst[i], GAP, wtInsertDel, wtSub, LENGTH);
                 }
                 
                 for (int l = 0; l < 3; l++) {
@@ -1019,13 +942,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     
                     if (pathFirst[i].posTrueA >= lengthSeqA) {
                         for (j = 0; j < lengthSeqB - pathFirst[i].posTrueB; j++) {
-                            pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = '-';
+                            pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = GAP;
                             pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = seqB[pathFirst[i].posTrueB + j];
                         }
                     }
                     if (pathFirst[i].posTrueB >= lengthSeqB) {
                         for (j = 0; j < lengthSeqA-pathFirst[i].posTrueA; j++) {
-                            pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = '-';
+                            pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = GAP;
                             pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = seqA[pathFirst[i].posTrueA + j];
                         }
                     }
@@ -1034,7 +957,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     //                        alignFinal[j] = pathFirst[i].partialAlign[j];
                     //
                     //                    }
-                    strncpy(alignFinal, pathFirst[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                    memcpy(alignFinal, pathFirst[i].partialAlign, sizeof(int) * INIT_LENGTH);
                     // // printf("%s\n", alignFinal);
                     
                     // flagPath[i] = 1;
@@ -1049,13 +972,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 
                 pathFirst[i].partialWt = pathFirst[i].partialWt + wtInsertDel;
                 pathFirst[i].partialAlign[pathFirst[i].posStringA] = seqA[pathFirst[i].posTrueA];
-                pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB]='-';
+                pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB]=GAP;
                 pathFirst[i].posStringA++;
                 pathFirst[i].posStringB++;
                 pathFirst[i].posTrueA++;
                 if (flagEmpty[0] == 0) {
                     
-                    pathFirst[i].partialTrueWt = trueWt(&pathFirst[i], wtInsertDel, wtSub, LENGTH);
+                    pathFirst[i].partialTrueWt = trueWt(&pathFirst[i], GAP, wtInsertDel, wtSub, LENGTH);
                 }
                 //  path[i].posTrueB++;
                 
@@ -1072,13 +995,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     
                     if (pathFirst[i].posTrueA >= lengthSeqA) {
                         for (j = 0; j < lengthSeqB-pathFirst[i].posTrueB; j++) {
-                            pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = '-';
+                            pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = GAP;
                             pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = seqB[pathFirst[i].posTrueB + j];
                         }
                     }
                     if (pathFirst[i].posTrueB >= lengthSeqB) {
                         for (j = 0; j < lengthSeqA-pathFirst[i].posTrueA; j++) {
-                            pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = '-';
+                            pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = GAP;
                             pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = seqA[pathFirst[i].posTrueA + j];
                         }
                     }
@@ -1087,7 +1010,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     //                        alignFinal[j] = pathFirst[i].partialAlign[j];
                     //
                     //                    }
-                    strncpy(alignFinal, pathFirst[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                    memcpy(alignFinal, pathFirst[i].partialAlign, sizeof(int) * INIT_LENGTH);
                     // // printf("%s\n", alignFinal);
                     
                     //  flagPath[i] = 1;
@@ -1100,7 +1023,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             {
                 
                 pathFirst[i].partialWt = pathFirst[i].partialWt + wtInsertDel;
-                pathFirst[i].partialAlign[pathFirst[i].posStringA] = '-';
+                pathFirst[i].partialAlign[pathFirst[i].posStringA] = GAP;
                 pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB] = seqB[pathFirst[i].posTrueB];
                 pathFirst[i].posStringA++;
                 pathFirst[i].posStringB++;
@@ -1108,7 +1031,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 pathFirst[i].posTrueB++;
                 if (flagEmpty[0] == 0) {
                     
-                    pathFirst[i].partialTrueWt = trueWt(&pathFirst[i], wtInsertDel, wtSub, LENGTH);
+                    pathFirst[i].partialTrueWt = trueWt(&pathFirst[i], GAP, wtInsertDel, wtSub, LENGTH);
                 }
                 
                 
@@ -1124,13 +1047,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     
                     if (pathFirst[i].posTrueA >= lengthSeqA) {
                         for (j = 0; j < lengthSeqB-pathFirst[i].posTrueB; j++) {
-                            pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = '-';
+                            pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = GAP;
                             pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = seqB[pathFirst[i].posTrueB + j];
                         }
                     }
                     if (pathFirst[i].posTrueB >= lengthSeqB) {
                         for (j = 0; j < lengthSeqA-pathFirst[i].posTrueA; j++) {
-                            pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = '-';
+                            pathFirst[i].partialAlign[LENGTH + pathFirst[i].posStringB + j] = GAP;
                             pathFirst[i].partialAlign[pathFirst[i].posStringA + j] = seqA[pathFirst[i].posTrueA + j];
                         }
                     }
@@ -1139,7 +1062,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     //                        alignFinal[j] = pathFirst[i].partialAlign[j];
                     //
                     //                    }
-                    strncpy(alignFinal, pathFirst[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                    memcpy(alignFinal, pathFirst[i].partialAlign, sizeof(int) * INIT_LENGTH);
                     // // printf("%s\n", alignFinal);
                     
                     //  flagPath[i] = 1;
@@ -1179,7 +1102,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 pathTempSecond[j].posTrueA = pathSecond[j].posTrueA;
                 pathTempSecond[j].posTrueB = pathSecond[j].posTrueB;
                 pathTempSecond[j].flagWhichTree = pathSecond[j].flagWhichTree;
-                strncpy(pathTempSecond[j].partialAlign, pathSecond[j].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(pathTempSecond[j].partialAlign, pathSecond[j].partialAlign, sizeof(int) * INIT_LENGTH);
             }
             
             // for (i = 0; i < 3; i++) {
@@ -1202,7 +1125,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 pathSecond[i].posTrueA = pathTempSecond[kSecond].posTrueA;
                 pathSecond[i].posTrueB = pathTempSecond[kSecond].posTrueB;
                 pathSecond[i].flagWhichTree = pathTempSecond[kSecond].flagWhichTree;
-                strncpy(pathSecond[i].partialAlign, pathTempSecond[kSecond].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(pathSecond[i].partialAlign, pathTempSecond[kSecond].partialAlign, sizeof(int) * INIT_LENGTH);
                 
                 
                 // printf("path %d is chosen\n", kSecond);
@@ -1221,7 +1144,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     pathSecond[i].posTrueA++;
                     pathSecond[i].posTrueB++;
                     if (flagEmpty[1] == 0) {
-                        pathSecond[i].partialTrueWt = trueWt(&pathSecond[i], wtInsertDel, wtSub, LENGTH);
+                        pathSecond[i].partialTrueWt = trueWt(&pathSecond[i], GAP, wtInsertDel, wtSub, LENGTH);
                         
                     }
                     
@@ -1232,13 +1155,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                         
                         if (pathSecond[i].posTrueA >= lengthSeqA) {
                             for (j = 0; j < lengthSeqB-pathSecond[i].posTrueB; j++) {
-                                pathSecond[i].partialAlign[pathSecond[i].posStringA + j]='-';
+                                pathSecond[i].partialAlign[pathSecond[i].posStringA + j]=GAP;
                                 pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j] = seqB[pathSecond[i].posTrueB + j];
                             }
                         }
                         if (pathSecond[i].posTrueB >= lengthSeqB) {
                             for (j = 0; j < lengthSeqA-pathSecond[i].posTrueA; j++) {
-                                pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j]='-';
+                                pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j]=GAP;
                                 pathSecond[i].partialAlign[pathSecond[i].posStringA + j] = seqA[pathSecond[i].posTrueA + j];
                             }
                         }
@@ -1248,7 +1171,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                         //
                         //                        }
                         
-                        strncpy(alignFinal, pathFirst[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                        memcpy(alignFinal, pathFirst[i].partialAlign, sizeof(int) * INIT_LENGTH);
                         // // printf("%s\n", alignFinal);
                         
                         // flagPath[i] = 1;
@@ -1263,13 +1186,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                     
                     pathSecond[i].partialWt = pathSecond[i].partialWt + wtInsertDel * wtInsertDel;
                     pathSecond[i].partialAlign[pathSecond[i].posStringA] = seqA[pathSecond[i].posTrueA];
-                    pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB]='-';
+                    pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB]=GAP;
                     pathSecond[i].posStringA++;
                     pathSecond[i].posStringB++;
                     pathSecond[i].posTrueA++;
                     //  path[i].posTrueB++;
                     if (flagEmpty[1] == 0) {
-                        pathSecond[i].partialTrueWt = trueWt(&pathSecond[i], wtInsertDel, wtSub, LENGTH);
+                        pathSecond[i].partialTrueWt = trueWt(&pathSecond[i], GAP, wtInsertDel, wtSub, LENGTH);
                         
                     }
                     
@@ -1280,13 +1203,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                         
                         if (pathSecond[i].posTrueA >= lengthSeqA) {
                             for (j = 0; j < lengthSeqB-pathSecond[i].posTrueB; j++) {
-                                pathSecond[i].partialAlign[pathSecond[i].posStringA + j]='-';
+                                pathSecond[i].partialAlign[pathSecond[i].posStringA + j]=GAP;
                                 pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j] = seqB[pathSecond[i].posTrueB + j];
                             }
                         }
                         if (pathSecond[i].posTrueB >= lengthSeqB) {
                             for (j = 0; j < lengthSeqA-pathSecond[i].posTrueA; j++) {
-                                pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j]='-';
+                                pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j]=GAP;
                                 pathSecond[i].partialAlign[pathSecond[i].posStringA + j] = seqA[pathSecond[i].posTrueA + j];
                             }
                         }
@@ -1295,7 +1218,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                         //                            alignFinal[j] = pathSecond[i].partialAlign[j];
                         //
                         //                        }
-                        strncpy(alignFinal, pathFirst[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                        memcpy(alignFinal, pathFirst[i].partialAlign, sizeof(int) * INIT_LENGTH);
                         // // printf("%s\n", alignFinal);
                         
                         //  flagPath[i] = 1;
@@ -1308,14 +1231,14 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 {
                     
                     pathSecond[i].partialWt = pathSecond[i].partialWt + wtInsertDel * wtInsertDel;
-                    pathSecond[i].partialAlign[pathSecond[i].posStringA]='-';
+                    pathSecond[i].partialAlign[pathSecond[i].posStringA]=GAP;
                     pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB] = seqB[pathSecond[i].posTrueB];
                     pathSecond[i].posStringA++;
                     pathSecond[i].posStringB++;
                     // path[i].posTrueA++;
                     pathSecond[i].posTrueB++;
                     if (flagEmpty[1] == 0) {
-                        pathSecond[i].partialTrueWt = trueWt(&pathSecond[i], wtInsertDel, wtSub, LENGTH);
+                        pathSecond[i].partialTrueWt = trueWt(&pathSecond[i], GAP, wtInsertDel, wtSub, LENGTH);
                         
                     }
                     
@@ -1326,13 +1249,13 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                         
                         if (pathSecond[i].posTrueA >= lengthSeqA) {
                             for (j = 0; j < lengthSeqB-pathSecond[i].posTrueB; j++) {
-                                pathSecond[i].partialAlign[pathSecond[i].posStringA + j]='-';
+                                pathSecond[i].partialAlign[pathSecond[i].posStringA + j]=GAP;
                                 pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j] = seqB[pathSecond[i].posTrueB + j];
                             }
                         }
                         if (pathSecond[i].posTrueB >= lengthSeqB) {
                             for (j = 0; j < lengthSeqA-pathSecond[i].posTrueA; j++) {
-                                pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j]='-';
+                                pathSecond[i].partialAlign[LENGTH + pathSecond[i].posStringB + j]=GAP;
                                 pathSecond[i].partialAlign[pathSecond[i].posStringA + j] = seqA[pathSecond[i].posTrueA + j];
                             }
                         }
@@ -1341,7 +1264,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                         //                            alignFinal[j] = pathSecond[i].partialAlign[j];
                         //
                         //                        }
-                        strncpy(alignFinal, pathFirst[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                        memcpy(alignFinal, pathFirst[i].partialAlign, sizeof(int) * INIT_LENGTH);
                         // // printf("%s\n", alignFinal);
                         
                         //  flagPath[i] = 1;
@@ -1397,7 +1320,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 path[i].posTrueA = pathFirst[0].posTrueA;
                 path[i].posTrueB = pathFirst[0].posTrueB;
                 path[i].flagWhichTree = pathFirst[0].flagWhichTree;
-                strncpy(path[i].partialAlign, pathFirst[0].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(path[i].partialAlign, pathFirst[0].partialAlign, sizeof(int) * INIT_LENGTH);
                 
             }
             else if (kMix == 0 && 19< indicatorMix && indicatorMix <22) {
@@ -1410,7 +1333,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 path[i].posTrueA = pathFirst[1].posTrueA;
                 path[i].posTrueB = pathFirst[1].posTrueB;
                 path[i].flagWhichTree = pathFirst[1].flagWhichTree;
-                strncpy(path[i].partialAlign, pathFirst[1].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(path[i].partialAlign, pathFirst[1].partialAlign, sizeof(int) * INIT_LENGTH);
             }
             else if (kMix == 0 && 29< indicatorMix && indicatorMix <32) {
                 //     path[i] = pathFirst[2];
@@ -1422,7 +1345,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 path[i].posTrueA = pathFirst[2].posTrueA;
                 path[i].posTrueB = pathFirst[2].posTrueB;
                 path[i].flagWhichTree = pathFirst[2].flagWhichTree;
-                strncpy(path[i].partialAlign, pathFirst[2].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(path[i].partialAlign, pathFirst[2].partialAlign, sizeof(int) * INIT_LENGTH);
             }
             else if (kMix == 1 && 9< indicatorMix && indicatorMix <12) {
                 //   path[i] = pathSecond[0];
@@ -1434,7 +1357,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 path[i].posTrueA = pathSecond[0].posTrueA;
                 path[i].posTrueB = pathSecond[0].posTrueB;
                 path[i].flagWhichTree = pathSecond[0].flagWhichTree;
-                strncpy(path[i].partialAlign, pathSecond[0].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(path[i].partialAlign, pathSecond[0].partialAlign, sizeof(int) * INIT_LENGTH);
             }
             else if (kMix == 1 && 19< indicatorMix && indicatorMix <22) {
                 //      path[i] = pathSecond[1];
@@ -1446,7 +1369,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 path[i].posTrueA = pathSecond[1].posTrueA;
                 path[i].posTrueB = pathSecond[1].posTrueB;
                 path[i].flagWhichTree = pathSecond[1].flagWhichTree;
-                strncpy(path[i].partialAlign, pathSecond[1].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(path[i].partialAlign, pathSecond[1].partialAlign, sizeof(int) * INIT_LENGTH);
             }
             //  else path[i] = pathSecond[2];
             else
@@ -1458,7 +1381,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 path[i].posTrueA = pathSecond[2].posTrueA;
                 path[i].posTrueB = pathSecond[2].posTrueB;
                 path[i].flagWhichTree = pathSecond[2].flagWhichTree;
-                strncpy(path[i].partialAlign, pathSecond[2].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(path[i].partialAlign, pathSecond[2].partialAlign, sizeof(int) * INIT_LENGTH);
             }
             
         }
@@ -1482,7 +1405,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             pathFirst[i].posTrueA = pathFirstInfinite.posTrueA;
             pathFirst[i].posTrueB = pathFirstInfinite.posTrueB;
             pathFirst[i].flagWhichTree = pathFirstInfinite.flagWhichTree;
-            strncpy(pathFirst[i].partialAlign, pathFirstInfinite.partialAlign, sizeof(char) * INIT_LENGTH);
+            memcpy(pathFirst[i].partialAlign, pathFirstInfinite.partialAlign, sizeof(int) * INIT_LENGTH);
             
             //    pathSecond[i] = pathSecondInfinite;
             pathSecond[i].partialWt = pathSecondInfinite.partialWt;
@@ -1492,7 +1415,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
             pathSecond[i].posTrueA = pathSecondInfinite.posTrueA;
             pathSecond[i].posTrueB = pathSecondInfinite.posTrueB;
             pathSecond[i].flagWhichTree = pathSecondInfinite.flagWhichTree;
-            strncpy(pathSecond[i].partialAlign, pathSecondInfinite.partialAlign, sizeof(char) * INIT_LENGTH);
+            memcpy(pathSecond[i].partialAlign, pathSecondInfinite.partialAlign, sizeof(int) * INIT_LENGTH);
         }
         
         for (i = 0; i < 3; i++) {                            // assign three candidate nodes to the two trees and other nodes are infinite nodes
@@ -1505,7 +1428,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 pathFirst[iFirst].posTrueA = path[i].posTrueA;
                 pathFirst[iFirst].posTrueB = path[i].posTrueB;
                 pathFirst[iFirst].flagWhichTree = path[i].flagWhichTree;
-                strncpy(pathFirst[iFirst].partialAlign, path[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(pathFirst[iFirst].partialAlign, path[i].partialAlign, sizeof(int) * INIT_LENGTH);
                 iFirst++;
             }
             else if(path[i].flagWhichTree == 2) {
@@ -1517,7 +1440,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
                 pathSecond[iSecond].posTrueA = path[i].posTrueA;
                 pathSecond[iSecond].posTrueB = path[i].posTrueB;
                 pathSecond[iSecond].flagWhichTree = path[i].flagWhichTree;
-                strncpy(pathSecond[iSecond].partialAlign, path[i].partialAlign, sizeof(char) * INIT_LENGTH);
+                memcpy(pathSecond[iSecond].partialAlign, path[i].partialAlign, sizeof(int) * INIT_LENGTH);
                 iSecond++;
             }
         }
@@ -1571,7 +1494,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     } while(flag == 0);
     
     
-    strncpy(finalAlign.partialAlign, alignFinal, sizeof(char) * INIT_LENGTH);
+    memcpy(finalAlign.partialAlign, alignFinal, sizeof(int) * INIT_LENGTH);
     //    for(i = 0; i < 2 * LENGTH; i++){
     //        finalAlign[0].partialAlign[i] = alignFinal[i];
     //    }
@@ -1579,7 +1502,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     finalAlign.partialWt = 0;
     
     for(i = 0; i < LENGTH; i++){
-        if(finalAlign.partialAlign[i] == '-' || finalAlign.partialAlign[i + LENGTH] == '-')
+        if(finalAlign.partialAlign[i] == GAP || finalAlign.partialAlign[i + LENGTH] == GAP)
             finalAlign.partialWt = finalAlign.partialWt + wtInsertDel;
         else if(finalAlign.partialAlign[i] == finalAlign.partialAlign[i + LENGTH])
             finalAlign.partialWt = finalAlign.partialWt;
@@ -1608,8 +1531,8 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
     }
     retAlign->seq2[strIdx - normalizer] = '\0';
     
-    // strncpy(retAlign->seq1, finalAlign.partialAlign, retAlign->alignmentLength);
-    // strncpy(retAlign->seq2, finalAlign.partialAlign, retAlign->alignmentLength);
+    // memcpy(retAlign->seq1, finalAlign.partialAlign, retAlign->alignmentLength);
+    // memcpy(retAlign->seq2, finalAlign.partialAlign, retAlign->alignmentLength);
     retAlign->weight = finalAlign.partialWt;
     // printf("%s %s\n\n", retAlign->seq1, retAlign->seq2);
     
@@ -1653,7 +1576,7 @@ int aligner(int *seq1, int *seq2, int wtInsertDel, int wtSub, struct retType* re
 
 //****************************************   COMBINE SORT CANDIDATES ACCORDING TO TRUE METRIC  *************************************************
 
-int trueWt(struct align *path, int wtInsertDel, int wtSub, int len){
+int trueWt(struct align *path, const int GAP, int wtInsertDel, int wtSub, int len){
     
     int i;
     
@@ -1680,7 +1603,7 @@ int trueWt(struct align *path, int wtInsertDel, int wtSub, int len){
     
     for(i = 0; i < path->posStringA ; i++){
         
-        if (path->partialAlign[i] == '-' || path->partialAlign[i + len] == '-') {
+        if (path->partialAlign[i] == GAP || path->partialAlign[i + len] == GAP) {
             diff[i] = wtInsertDel;
         }
         else if (path->partialAlign[i]== path->partialAlign[i + len]) {
@@ -1716,3 +1639,8 @@ int trueWt(struct align *path, int wtInsertDel, int wtSub, int len){
     
 }
 
+void freeRetType(retType_t* toFree) {
+    free(toFree->seq1);
+    free(toFree->seq2);
+    free(toFree);
+}
