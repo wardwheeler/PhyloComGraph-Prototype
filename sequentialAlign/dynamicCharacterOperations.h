@@ -64,9 +64,9 @@
 #include <stdint.h>
 
 // these must be static to prevent compilation issues.
-static const size_t   BITS_IN_BYTE   = 8;                        // so bytes are set to 8, for all architectures
-static const size_t   INT_WIDTH      = sizeof(uint64_t);         // don't forget: in bytes
-static const size_t   WORD_WIDTH     = BITS_IN_BYTE * INT_WIDTH; // BITS_IN_BYTE * INT_WIDTH; <-- because HSC is dumb!
+static const size_t   BITS_IN_BYTE   = 8;                    // so bytes are set to 8, for all architectures
+static const size_t   INT_WIDTH      = sizeof(uint64_t);     // don't forget: in bytes
+static const size_t   WORD_WIDTH     = 8 * sizeof(uint64_t); // BITS_IN_BYTE * INT_WIDTH; <-- because HSC is dumb!
 static const uint64_t CANONICAL_ONE  = 1;
 static const uint64_t CANONICAL_ZERO = 0;
 
@@ -185,7 +185,7 @@ dcElement_t* makeDCElement( const size_t alphSize, const uint64_t value );
  *
  *  newElem1
  */
-double getCost( const dynChar_t* const inDynChar1, size_t whichElem1,
+double getCostDyn( const dynChar_t* const inDynChar1, size_t whichElem1,
                 const dynChar_t* const inDynChar2, size_t whichElem2,
                 costMtx_t* tcm, dcElement_t* newElem1 );
 

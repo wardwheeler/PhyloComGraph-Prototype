@@ -19,7 +19,9 @@
 #include <unordered_map>
 
 #include "costMatrix.h"
-#include "dynamicCharacterOperations.h"
+extern "C" {
+    #include "dynamicCharacterOperations.h"
+}
 // #include "CostMedPair.h"
 
 typedef std::pair<dcElement_t, dcElement_t> keys_t;
@@ -43,8 +45,8 @@ struct KeyHash {
      *  http://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
      */
     std::size_t hash_combine (const dcElement_t lhs, const dcElement_t rhs) const {
-        std::size_t left_seed  = 3141592653;
-        std::size_t right_seed = 2718281828;
+        std::size_t left_seed  = 3141592653; // PI used as arbitrarily random seed
+        std::size_t right_seed = 2718281828; // E  used as arbitrarily random seed
 
         std::hash<uint64_t> hasher;
         size_t elemArrWidth = lhs.alphSize / INT_WIDTH + lhs.alphSize % INT_WIDTH;
@@ -66,7 +68,7 @@ struct KeyEqual {
     // Return true if every `uint64_t` in lhs->element and rhs->element is equal, else false.
     bool operator()(const keys_t& lhs, const keys_t& rhs) const
     {
-        int elemArrWidth = lhs.first.alphSize / INT_WIDTH + lhs.first.alphSize % INT_WIDTH; // assume that alphabet sizes for all four dcElements are the same
+        size_t elemArrWidth = lhs.first.alphSize / INT_WIDTH + lhs.first.alphSize % INT_WIDTH; // assume that alphabet sizes for all four dcElements are the same
         for (size_t i = 0; i < elemArrWidth; i++) {
             if (lhs.first.element[i] != rhs.first.element[i]) {
                 return false;
