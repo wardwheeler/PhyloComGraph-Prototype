@@ -90,7 +90,7 @@ int main() {
 
     if (success == 0) {
         printf("\nSuccess!\n\n");
-        printf("The aligned sequences are: \n%p\n%p\n", retAlign->seq1, retAlign->seq2);
+        printf("The aligned sequences are: \n%d\n%d\n", retAlign->seq1, retAlign->seq2);
         printf("The cost of the alignment is: %d\n", retAlign->weight);
         // for(int i = 0; i < length; ++i) {
         //     printf("%d\n",(int)retAlign->seq1[i]);
