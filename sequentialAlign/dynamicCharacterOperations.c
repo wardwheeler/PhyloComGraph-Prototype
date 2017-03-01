@@ -121,6 +121,7 @@ int setDCElement( const size_t whichIdx, const dcElement_t *const changeToThis,
 }
 
 dcElement_t *getDCElement( const size_t whichChar, const dynChar_t *const inDynChar ) {
+
     dcElement_t *output = allocateDCElement(inDynChar->alphSize);
 
     // fail if prereqs aren't met

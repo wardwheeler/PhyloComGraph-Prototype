@@ -17,6 +17,7 @@ void destruct_CostMatrix_C(costMatrix_p untyped_self) {
 }
 
 int call_getSetCost_C(costMatrix_p untyped_self, dcElement_t* left, dcElement_t* right, dcElement_t* retMedian) {
+
     CostMatrix* thisMtx = static_cast<CostMatrix*> (untyped_self);
     return thisMtx->getSetCostMedian(left, right, retMedian);
 }

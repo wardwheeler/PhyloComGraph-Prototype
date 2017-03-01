@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#include "costMatrixWrapper.h"
 #include "dynamicCharacterOperations.h"
 #include "seqAlignForHaskell.h"
 
@@ -169,8 +168,6 @@ int aligner( uint64_t *seq1
     pathFirst[2].partialAlign[BUFFER_OFFSET] = seqB[0];
 
     // !! the two weights (wtSub, wtInsertDel) are the same as in pathFirst
-    //!! wtSub=getCost(seqA[0],seqB[0]);
-    //!! wtInsertDel=getCost(seqa[0], '-');
     // !! wtSub=getCost(seqA[0],seqB[0]);
     // !! wtInsertDel=getCost(seqa[0], '-');
 
@@ -211,7 +208,6 @@ int aligner( uint64_t *seq1
         , gapToB0 + 2 * gapToB0 * gapToB0
         }
     };
-
     // printf("arrayInitial[0][0]: %2d\n", arrayInitial[0][0]);
     // printCostBuffer(arrayInitial[0], 6, "arrayInitial[0]");
     // printCostBuffer(arrayInitial[1], 6, "arrayInitial[1]");
@@ -611,6 +607,7 @@ int aligner( uint64_t *seq1
 
                     if (flagEmpty[1] == 0) {
                         pathSecond[i].partialTrueWt = trueWt(&pathSecond[i], tcm, BUFFER_OFFSET, SEQ_MAX_LEN, alphSize);
+
                     }
 
                     if (pathSecond[i].posTrueA >= lengthSeqA - 1 || pathSecond[i].posTrueB >= lengthSeqB - 1 ) {
@@ -636,6 +633,7 @@ int aligner( uint64_t *seq1
                     }
 
                 }
+
                 if ( indicatorSecond > 19 && indicatorSecond < 25) {   // gap in seqB
                     // printf("n+4th a[%d]: %2llu b[X]: %2llu \n", pathFirst[kFirst].posTrueA, seqA[pathFirst[kFirst].posTrueA], GAP);
 
@@ -930,10 +928,6 @@ int trueWt(alignment_t *path, costMatrix_p tcm, size_t offset, size_t maxLen, si
 
     wtTempFirst = wtTempFirst * wtTempFirst + wtTempFirst;
     wtTemp      = wtTempFirst + wtTempSecond;
-
-    // test output
-
-    // printf("wtTemp is:%d\n", wtTemp);
 
     return wtTemp;
 
