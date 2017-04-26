@@ -787,13 +787,13 @@ void copyAligmentStruct ( alignment_t *copyTo
                         , const size_t initLength
                         )
 {
-    copyTo[copyToIdx].gapped_partialCost     = copyFrom[copyFromIdx].gapped_partialCost;
-    copyTo[copyToIdx].ungapped_partialCost   = copyFrom[copyFromIdx].ungapped_partialCost;
-    copyTo[copyToIdx].aligned_sequence_A_end_ptr   = copyFrom[copyFromIdx].aligned_sequence_A_end_ptr;
-    copyTo[copyToIdx].aligned_sequence_B_end_ptr   = copyFrom[copyFromIdx].aligned_sequence_B_end_ptr;
-    copyTo[copyToIdx].input_sequence_A_ptr = copyFrom[copyFromIdx].input_sequence_A_ptr;
-    copyTo[copyToIdx].input_sequence_B_ptr = copyFrom[copyFromIdx].input_sequence_B_ptr;
-    copyTo[copyToIdx].flagWhichTree          = copyFrom[copyFromIdx].flagWhichTree;
+    copyTo[copyToIdx].gapped_partialCost       = copyFrom[copyFromIdx].gapped_partialCost;
+    copyTo[copyToIdx].ungapped_partialCost     = copyFrom[copyFromIdx].ungapped_partialCost;
+    copyTo[copyToIdx].aligned_sequence_A_end_pt= copyFrom[copyFromIdx].aligned_sequence_A_end_ptr;
+    copyTo[copyToIdx].aligned_sequence_B_end_pt= copyFrom[copyFromIdx].aligned_sequence_B_end_ptr;
+    copyTo[copyToIdx].input_sequence_A_ptr     = copyFrom[copyFromIdx].input_sequence_A_ptr;
+    copyTo[copyToIdx].input_sequence_B_ptr     = copyFrom[copyFromIdx].input_sequence_B_ptr;
+    copyTo[copyToIdx].flagWhichTree            = copyFrom[copyFromIdx].flagWhichTree;
     //TODO: and here
     memcpy(copyTo[copyToIdx].partialAlign_A, copyFrom[copyFromIdx].partialAlign_A, sizeof(uint64_t) * initLength);
     memcpy(copyTo[copyToIdx].partialAlign_B, copyFrom[copyFromIdx].partialAlign_B, sizeof(uint64_t) * initLength);
@@ -815,13 +815,13 @@ alignment_t *initAlignment( int    in_partialCost
         exit(1);
     }
 
-    output->gapped_partialCost     = in_partialCost;
-    output->ungapped_partialCost   = in_ungapped_partialCost;
-    output->aligned_sequence_A_end_ptr   = in_aligned_sequence_A_end_ptr;
-    output->aligned_sequence_B_end_ptr   = in_aligned_sequence_B_end_ptr;
-    output->input_sequence_A_ptr = in_input_sequence_A_ptr;
-    output->input_sequence_B_ptr = in_input_sequence_B_ptr;
-    output->flagWhichTree          = in_flagWhichTree;
+    output->gapped_partialCost         = in_partialCost;
+    output->ungapped_partialCost       = in_ungapped_partialCost;
+    output->aligned_sequence_A_end_ptr = in_aligned_sequence_A_end_ptr;
+    output->aligned_sequence_B_end_ptr = in_aligned_sequence_B_end_ptr;
+    output->input_sequence_A_ptr       = in_input_sequence_A_ptr;
+    output->input_sequence_B_ptr       = in_input_sequence_B_ptr;
+    output->flagWhichTree              = in_flagWhichTree;
 
     output->partialAlign_A = calloc( initLength, sizeof(uint64_t) );
     output->partialAlign_B = calloc( initLength, sizeof(uint64_t) );
@@ -941,8 +941,8 @@ int updateSequences( alignment_t       *path
     }
 
     // increment both pointers into gapped sequences, since we're just added elements to each
-    path->aligned_sequence_A_end_ptr   = boundedIncrement(path->aligned_sequence_A_end_ptr, SEQ_MAX_LEN);
-    path->aligned_sequence_B_end_ptr   = boundedIncrement(path->aligned_sequence_B_end_ptr, SEQ_MAX_LEN);
+    path->aligned_sequence_A_end_ptr = boundedIncrement(path->aligned_sequence_A_end_ptr, SEQ_MAX_LEN);
+    path->aligned_sequence_B_end_ptr = boundedIncrement(path->aligned_sequence_B_end_ptr, SEQ_MAX_LEN);
 
     //TODO: figure out what the meaning of this is.
     if (flagEmpty == 0) {
