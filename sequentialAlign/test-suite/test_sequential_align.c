@@ -56,6 +56,17 @@ int main() {
 
     if (success == 0) {
         printf("\nSuccess!\n\n");
+        printf("The original sequences are:\n");
+        printf("  sequence 1:  [");
+        for(size_t i = 0; i < charALen; ++i) {
+            printf("%2" PRIu64 ", ", charA_main[i]);
+        }
+        printf("]\n  sequence 2:  [");
+        for(size_t i = 0; i < charBLen; ++i) {
+            printf("%2" PRIu64 ", ", charB_main[i]);
+        }
+        printf("]\n\n");
+
         printf("The aligned sequences are:\n");
         printf("  sequence 1:  [");
         for(size_t i = 0; i < length; ++i) {
@@ -66,6 +77,7 @@ int main() {
             printf("%2" PRIu64 ", ", retAlign->char2[i]);
         }
         printf("]\n");
+
         printf("The cost of the alignment is: %d\n", retAlign->cost);
 
     } else {
