@@ -1,4 +1,4 @@
-PhyloComGraph
+PhyloComGraph-Prototype
 =============
 Prototype Haskell code for general phylogenetic graph searching
 
